@@ -1,79 +1,150 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# DeepLeaf API React Native Integration Guide
 
-# Getting Started
+This guide will help you integrate the DeepLeaf API into your React Native application for plant health anomalies detection and analysis.
 
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
+## Installation
 
-## Step 1: Start the Metro Server
-
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
-
-To start Metro, run the following command from the _root_ of your React Native project:
+1. Install the DeepLeaf API package:
 
 ```bash
-# using npm
-npm start
-
-# OR using Yarn
-yarn start
+npm install deepleaf-api-rn
+# or using yarn
+yarn add deepleaf-api-rn
 ```
 
-## Step 2: Start your Application
-
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
-
-### For Android
+2. Install required dependencies for image handling:
 
 ```bash
-# using npm
-npm run android
-
-# OR using Yarn
-yarn android
+npm install react-native-image-picker
+# or using yarn
+yarn add react-native-image-picker
 ```
 
-### For iOS
+3. Install other dependencies by running:
 
 ```bash
-# using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
+npm i
+# or using yarn
+yarn install
 ```
 
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
+## Configuration
 
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
+### API Setup
 
-## Step 3: Modifying your App
+If you don’t have your API key yet, you can obtain it by registering at [deepleaf.io/products/api/register](https://deepleaf.io/products/api/register) or by contacting us directly at **hello@deepleaf.io** if the registration page is unavailable.
 
-Now that you have successfully run the app, let's modify it.
+Initialize the DeepLeaf API client in your app:
 
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
+```typescript
+import { DeepLeafAPI } from 'deepleaf-api-rn';
 
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
+const api = new DeepLeafAPI({
+  apiKey: 'YOUR_API_KEY_HERE',
+  language: 'en', // or your preferred language code
+});
+```
 
-## Congratulations! :tada:
+You can manage the language setting dynamically using:
 
-You've successfully run and modified your React Native App. :partying_face:
+- i18next for internationalization
+- AsyncStorage for local storage
+- MMKV for high-performance storage
+- Or any other state management solution
 
-### Now what?
+Example with AsyncStorage:
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
+```typescript
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-# Troubleshooting
+// Initialize API with stored language
+const initializeAPI = async () => {
+  const storedLanguage = (await AsyncStorage.getItem('userLanguage')) || 'en';
+  const api = new DeepLeafAPI({
+    apiKey: 'YOUR_API_KEY_HERE',
+    language: storedLanguage,
+  });
+};
+```
 
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+### Android Permissions
 
-# Learn More
+If your app uses camera capture and/or location features, add these permissions to your `android/app/src/main/AndroidManifest.xml` file:
 
-To learn more about React Native, take a look at the following resources:
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required permissions -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+    <!-- ... rest of your manifest file ... -->
+</manifest>
+```
+
+## Usage
+
+Check the example app in this repository for a complete implementation. The example demonstrates:
+
+- Image selection from gallery
+- Image analysis using DeepLeaf API
+- Displaying analysis results
+- Handling loading states and errors
+
+## Important Notes
+
+1. Keep your API key secure and never commit it directly in your code (using .env for example)
+2. Handle permissions requests appropriately for camera and location access
+3. Implement proper error handling for API responses
+4. Consider implementing caching for analysis results if needed
+
+## Support
+
+For additional help or issues:
+
+- Visit the DeepLeaf API documentation [deepleaf.io/products/api/documentation](https://deepleaf.io/products/api/documentation)
+- Submit issues on the repository
+- Contact DeepLeaf support team [deepleaf.io/products/api/support](https://deepleaf.io/products/api/support)
+
+## Licenses
+
+### DeepLeaf Example App License
+
+The example app is open-source under the **MIT License**:
+
+```
+MIT License
+
+Copyright (c) [2025] DeepLeaf, Co.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+---
+
+### DeepLeaf AI and API License
+
+The DeepLeaf AI and API are proprietary to DeepLeaf, Co., and users must comply with the **DeepLeaf AI and API License Agreement**:
+
+```
+Copyright © [2025] DeepLeaf, Co. All rights reserved.
+
+1. Grant of License:
+   You are granted a non-exclusive, revocable license to use the DeepLeaf API solely as described in the official documentation and in compliance with these terms.
+
+2. Restrictions:
+   - You may not reverse engineer, decompile, or attempt to derive the source code of DeepLeaf AI or API.
+   - You may not sublicense, sell, or distribute access to the API.
+
+3. Ownership:
+   All rights, title, and interest in the DeepLeaf AI and API, including any updates or modifications, remain the sole property of DeepLeaf, Co.
+
+4. Termination:
+   DeepLeaf, Co. reserves the right to terminate this license at any time if the terms are violated.
+```
+
+For inquiries or questions regarding the DeepLeaf AI and API, please contact us at **hello@deepleaf.io**.
