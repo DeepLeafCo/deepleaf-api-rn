@@ -5072,6 +5072,7 @@ __metadata:
     axios: ^1.7.9
     commitlint: ^17.0.2
     conventional-changelog-angular: latest
+    conventional-changelog-conventionalcommits: ^8.0.0
     del-cli: ^5.1.0
     eslint: ^8.51.0
     eslint-config-prettier: ^9.0.0
