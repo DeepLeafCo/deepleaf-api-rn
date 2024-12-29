@@ -1,6 +1,6 @@
 {
   "name": "deepleaf-api-rn",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "API wrapper and camera components by DeepLeaf for Crop Health Monitoring apps.",
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
