@@ -1,10 +1,4 @@
-// example/src/App.tsx
-
-/**
- * Main application component for the DeepLeaf API demo
- * This app allows users to select an image and analyze it for plant diseases
- * using the DeepLeaf API service.
- */
+// App.tsx
 
 import { useState } from 'react';
 import {
@@ -15,22 +9,27 @@ import {
   TouchableOpacity,
   View,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 
 // Import the DeepLeaf API client and types
 import { DeepLeafAPI } from 'deepleaf-api-rn';
-import type { Diagnosis } from 'deepleaf-api-rn';
+import type {
+  DeepLeafResponse,
+  DiagnosisInfo,
+  ImageFeedback,
+} from 'deepleaf-api-rn';
 
-// Import image picker for handling image selection, you can use any other library for image selection or camera capture like react-native-camera or expo-image-picker or react-native-vision-camera
+// Import image picker for handling image selection
 import * as ImagePicker from 'react-native-image-picker';
 
 // Your API key for DeepLeaf services
-const API_KEY = 'feed_the_world_KvFJd02dWMtkfHk7F8ytuj7R1Sip9niPYIVkDWnfR-8';
+const API_KEY = 'YOUR_API_KEY';
 
 export default function App() {
   // State management for the application
   const [selectedImage, setSelectedImage] = useState<string | null>(null); // Stores the selected image URI
-  const [response, setResponse] = useState<any>(null); // Stores the API response
+  const [response, setResponse] = useState<DeepLeafResponse | null>(null); // Stores the API response
   const [loading, setLoading] = useState(false); // Tracks loading state during API calls
 
   // Initialize the DeepLeaf API client
@@ -48,6 +47,8 @@ export default function App() {
       {
         mediaType: 'photo',
         includeBase64: false,
+        quality: 0.8,
+        selectionLimit: 1,
       },
       (result: ImagePicker.ImagePickerResponse) => {
         if (
@@ -76,58 +77,86 @@ export default function App() {
     setLoading(true);
     try {
       const result = await api.uploadImage(selectedImage);
+      console.log('API Response:', JSON.stringify(result, null, 2)); // Debug log
       setResponse(result);
     } catch (error) {
       console.error('Error analyzing image:', error);
-      setResponse({ error: 'Failed to analyze image' });
+      setResponse({
+        success: false,
+        error: {
+          code: 'ANALYSIS_ERROR',
+          message: 'Failed to analyze the image',
+        },
+        data: null,
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   /**
    * Renders the diagnosis results from the API response
-   * Displays image feedback and detected plant diseases
    */
   const renderDiagnosis = () => {
     if (!response) return null;
-    if ('error' in response) {
-      return <Text style={styles.error}>{response.error}</Text>;
+
+    // Handle error responses
+    if (!response.success || response.error) {
+      return (
+        <View>
+          <Text style={styles.error}>Error</Text>
+          <Text>
+            {(response.error && response.error.message) || 'Unknown error'}
+          </Text>
+        </View>
+      );
     }
+
+    // Get the data from the response
+    const responseData = response.data || {};
+
+    // Extract specific fields from the data
+    const imageFeedback: ImageFeedback = responseData.image_feedback || {};
+    const diagnosesDetected: boolean = responseData.diagnoses_detected || false;
+    const predictedDiagnoses: DiagnosisInfo[] =
+      responseData.predicted_diagnoses || [];
 
     return (
       <View>
         {/* Display image quality feedback */}
-        <Text style={styles.sectionTitle}>Image Feedback:</Text>
-        <Text>Distance: {response.image_feedback.distance}</Text>
-        <Text>Focus: {response.image_feedback.focus}</Text>
+        {imageFeedback && Object.keys(imageFeedback).length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Image Feedback:</Text>
+            <Text>Distance: {imageFeedback.distance}</Text>
+            <Text>Focus: {imageFeedback.focus}</Text>
+          </>
+        )}
 
         {/* Display detected diagnoses if any */}
-        {response.diagnoses_detected && (
-          <>
-            <Text style={styles.sectionTitle}>Diagnoses:</Text>
-            {response.predicted_diagnoses.map(
-              (diagnosis: Diagnosis, index: number) => (
-                <View key={index} style={styles.diagnosis}>
-                  <Text style={styles.diagnosisName}>
-                    {diagnosis.common_name}
-                  </Text>
-                  <Text>Likelihood: {diagnosis.diagnosis_likelihood}</Text>
-                  <Text>Scientific Name: {diagnosis.scientific_name}</Text>
-                  <View style={styles.flexDir}>
-                    <Text>Hosts: </Text>
-                    <Text>{diagnosis.hosts.join(', ')}</Text>
-                  </View>
-                  {/* Display raw JSON response for debugging */}
-                  <View style={styles.jsonContainer}>
-                    <Text style={styles.jsonTitle}>Full JSON Response:</Text>
-                    <Text style={styles.jsonText}>
-                      {JSON.stringify(diagnosis, null, 2)}
-                    </Text>
-                  </View>
-                </View>
-              )
-            )}
-          </>
+        <Text style={styles.sectionTitle}>
+          Diagnoses {diagnosesDetected ? 'Detected' : 'Not Detected'}:
+        </Text>
+
+        {predictedDiagnoses.length > 0 ? (
+          predictedDiagnoses.map((diagnosis, index) => (
+            <View key={index} style={styles.diagnosis}>
+              <Text style={styles.diagnosisName}>{diagnosis.common_name}</Text>
+              <Text>Likelihood: {diagnosis.diagnosis_likelihood}</Text>
+              <Text>Scientific Name: {diagnosis.scientific_name}</Text>
+              <Text>Hosts: {diagnosis.hosts.join(', ')}</Text>
+            </View>
+          ))
+        ) : (
+          <Text>No specific diagnoses available</Text>
+        )}
+
+        {/* Display metadata if available */}
+        {response.meta && (
+          <View style={styles.metaContainer}>
+            <Text style={styles.metaTitle}>Metadata:</Text>
+            <Text>Request ID: {response.meta.request_id}</Text>
+            <Text>Timestamp: {response.meta.timestamp}</Text>
+          </View>
         )}
       </View>
     );
@@ -157,9 +186,14 @@ export default function App() {
               onPress={analyzeImage}
               disabled={loading}
             >
-              <Text style={styles.buttonText}>
-                {loading ? 'Analyzing...' : 'Analyze Image'}
-              </Text>
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color="#000" />
+                  <Text style={styles.buttonText}>Analyzing...</Text>
+                </View>
+              ) : (
+                <Text style={styles.buttonText}>Analyze Image</Text>
+              )}
             </TouchableOpacity>
           </>
         )}
@@ -168,6 +202,16 @@ export default function App() {
         {response && (
           <View style={styles.responseContainer}>{renderDiagnosis()}</View>
         )}
+
+        {/* Debug view for showing the raw response */}
+        {response && (
+          <View style={styles.debugContainer}>
+            <Text style={styles.debugTitle}>Raw Response:</Text>
+            <Text style={styles.debugText}>
+              {JSON.stringify(response, null, 2)}
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -175,7 +219,6 @@ export default function App() {
 
 /**
  * Styles for the application
- * Includes layout, colors, and typography definitions
  */
 const styles = StyleSheet.create({
   container: {
@@ -206,6 +249,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  loadingContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   image: {
     width: '100%',
     height: 300,
@@ -222,6 +270,8 @@ const styles = StyleSheet.create({
   error: {
     color: 'red',
     fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
   sectionTitle: {
     fontSize: 18,
@@ -241,19 +291,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 5,
   },
-  jsonContainer: {
-    backgroundColor: 'black',
+  debugContainer: {
+    marginTop: 20,
     padding: 10,
+    backgroundColor: '#000',
+    borderRadius: 6,
   },
-  jsonTitle: {
-    color: 'white',
+  debugTitle: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: 'bold',
+    marginBottom: 5,
   },
-  jsonText: {
-    color: 'lime',
-    fontSize: 12,
+  debugText: {
+    color: '#0f0',
+    fontSize: 10,
   },
-  flexDir: {
-    flexDirection: 'row',
+  metaContainer: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 6,
+  },
+  metaTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 5,
   },
 });

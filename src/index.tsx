@@ -1,94 +1,42 @@
-import { NativeModules, Platform } from 'react-native';
-import axios, { AxiosError } from 'axios';
+// src/index.ts
+
+import axios from 'axios';
 import type { AxiosInstance } from 'axios';
-import type {
-  DeepLeafConfig,
-  DeepLeafResponse,
-  PositionData,
-  UploadImageError,
-} from './types';
-import {
-  isSuccessResponse,
-  isUnsupportedDiseaseError,
-  isLowResolutionError,
-  isInvalidApiKeyError,
-  isUnpaidSubscriptionError,
-} from './utils';
-export * from './types';
-export * from './hooks/useAppState';
-export * from './hooks/useLocationService';
-export * from './hooks/usePermissions';
-export * from './utils';
+import type { DeepLeafConfig, DeepLeafResponse } from './types';
 
-const LINKING_ERROR =
-  `The package 'deepleaf-api-rn' doesn't seem to be linked. Make sure: \n\n` +
-  Platform.select({ ios: "- You have run 'pod install'\n", default: '' }) +
-  '- You rebuilt the app after installing the package\n' +
-  '- You are not using Expo Go\n';
-
-const DeepleafApiRn = NativeModules.DeepleafApiRn
-  ? NativeModules.DeepleafApiRn
-  : new Proxy(
-      {},
-      {
-        get() {
-          throw new Error(LINKING_ERROR);
-        },
-      }
-    );
-
-const DEFAULT_ENDPOINT = 'https://api.deepleaf.io/';
+const DEFAULT_ENDPOINT = 'https://3590-105-66-7-245.ngrok-free.app/';
 
 export class DeepLeafAPI {
   private apiKey: string;
   private readonly client: AxiosInstance;
-  private readonly language: string;
-  private readonly nativeModule: typeof DeepleafApiRn;
+  private language: string;
 
   constructor(config: DeepLeafConfig) {
     this.apiKey = config.apiKey;
     this.language = config.language || 'en';
-    this.nativeModule = DeepleafApiRn;
 
     this.client = axios.create({
       baseURL: config.endpoint || DEFAULT_ENDPOINT,
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'multipart/form-data',
-        'User-Agent': `DeepLeaf-RN-SDK/${Platform.OS}`,
       },
     });
-
-    // Add response interceptor for error handling
-    this.client.interceptors.response.use(
-      (response) => response,
-      (error: AxiosError) => {
-        if (error.response) {
-          const errorData = error.response.data as DeepLeafResponse;
-          if (isInvalidApiKeyError(errorData)) {
-            throw new Error('Invalid API key provided');
-          } else if (isUnpaidSubscriptionError(errorData)) {
-            throw new Error('Subscription payment required');
-          }
-        }
-        throw error;
-      }
-    );
   }
 
   /**
    * Upload an image for plant disease diagnosis
    * @param imageUri - Local URI of the image to upload
-   * @param location - Optional location data
    * @returns Promise with the diagnosis response
    */
-  async uploadImage(
-    imageUri: string,
-    location?: PositionData
-  ): Promise<DeepLeafResponse | UploadImageError> {
+  async uploadImage(imageUri: string): Promise<DeepLeafResponse> {
     try {
       if (!imageUri) {
-        return { error: 'No image URI provided' };
+        return {
+          success: false,
+          error: { code: 'NO_IMAGE', message: 'No image URI provided' },
+          data: null,
+        };
       }
 
       const formData = new FormData();
@@ -100,12 +48,6 @@ export class DeepLeafAPI {
         name: 'plant_image.jpg',
       });
 
-      // Append location data if available
-      if (location) {
-        formData.append('latitude', location.latitude.toString());
-        formData.append('longitude', location.longitude.toString());
-      }
-
       const response = await this.client.post<DeepLeafResponse>(
         `/analyze?language=${this.language}&api_key=${this.apiKey}`,
         formData
@@ -114,23 +56,34 @@ export class DeepLeafAPI {
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        const errorResponse = error.response?.data as DeepLeafResponse;
-
-        if (
-          isUnsupportedDiseaseError(errorResponse) ||
-          isLowResolutionError(errorResponse)
-        ) {
-          return errorResponse;
+        // If the response contains API error data, return it directly
+        if (error.response?.data) {
+          return error.response.data as DeepLeafResponse;
         }
 
+        // Basic error response
         return {
-          error: `API request failed: ${error.response?.status} ${error.response?.statusText}`,
+          success: false,
+          error: {
+            code: 'NETWORK_ERROR',
+            message: error.message || 'Network error',
+          },
+          data: null,
+          meta: {
+            status: error.response?.status || 500,
+          },
         };
       }
 
+      // For non-Axios errors
       return {
-        error:
-          error instanceof Error ? error.message : 'Unknown error occurred',
+        success: false,
+        error: {
+          code: 'UNKNOWN_ERROR',
+          message:
+            error instanceof Error ? error.message : 'Unknown error occurred',
+        },
+        data: null,
       };
     }
   }
@@ -148,11 +101,35 @@ export class DeepLeafAPI {
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw new Error(
-          `Failed to fetch diagnosis: ${error.response?.status} ${error.response?.statusText}`
-        );
+        // If the response contains API error data, return it directly
+        if (error.response?.data) {
+          return error.response.data as DeepLeafResponse;
+        }
+
+        // Basic error response
+        return {
+          success: false,
+          error: {
+            code: 'NETWORK_ERROR',
+            message: error.message || 'Network error',
+          },
+          data: null,
+          meta: {
+            status: error.response?.status || 500,
+          },
+        };
       }
-      throw error;
+
+      // For non-Axios errors
+      return {
+        success: false,
+        error: {
+          code: 'UNKNOWN_ERROR',
+          message:
+            error instanceof Error ? error.message : 'Unknown error occurred',
+        },
+        data: null,
+      };
     }
   }
 
@@ -165,32 +142,13 @@ export class DeepLeafAPI {
       this.apiKey = config.apiKey;
     }
     if (config.language) {
-      this.client.defaults.headers['Accept-Language'] = config.language;
+      this.language = config.language;
     }
     if (config.endpoint) {
       this.client.defaults.baseURL = config.endpoint;
     }
   }
-
-  /**
-   * Check if the response indicates a successful diagnosis
-   * @param response - The API response to check
-   * @returns boolean indicating if diagnosis was successful
-   */
-  static isSuccessful(response: DeepLeafResponse): boolean {
-    return isSuccessResponse(response) && response.diagnoses_detected;
-  }
-
-  // Keep the multiply method for testing native module linking
-  multiply(a: number, b: number): Promise<number> {
-    return this.nativeModule.multiply(a, b);
-  }
 }
 
 // Export type definitions
 export * from './types';
-
-// Export hooks
-export * from './hooks/useAppState';
-export * from './hooks/useLocationService';
-export * from './hooks/usePermissions';
