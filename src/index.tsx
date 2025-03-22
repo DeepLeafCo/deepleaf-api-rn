@@ -4,7 +4,7 @@ import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 import type { DeepLeafConfig, DeepLeafResponse } from './types';
 
-const DEFAULT_ENDPOINT = 'https://3590-105-66-7-245.ngrok-free.app/';
+const DEFAULT_ENDPOINT = 'https://api.deepleaf.io/';
 
 export class DeepLeafAPI {
   private apiKey: string;
