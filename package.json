@@ -53,14 +53,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ElMahdiAboulmanadel/deepleaf-api-rn.git"
+    "url": "git+https://github.com/DeepLeafCo/deepleaf-api-rn.git"
   },
-  "author": "El Mahdi Aboulmanadel, DeepLeaf, Co. <mahdi@deepleaf.io> (https://github.com/ElMahdiAboulmanadel)",
+  "author": "El Mahdi Aboulmanadel, DeepLeaf, Co. <hello@deepleaf.io> (https://github.com/DeepLeafCo)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ElMahdiAboulmanadel/deepleaf-api-rn/issues"
+    "url": "https://github.com/DeepLeafCo/deepleaf-api-rn/issues"
   },
-  "homepage": "https://github.com/ElMahdiAboulmanadel/deepleaf-api-rn#readme",
+  "homepage": "https://github.com/DeepLeafCo/deepleaf-api-rn#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
