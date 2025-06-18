@@ -185,5 +185,11 @@
     "type": "legacy-module",
     "languages": "kotlin-swift",
     "version": "0.45.5"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "react-native-geolocation-service": "^5.3.1",
+    "react-native-image-picker": "^8.2.1",
+    "react-native-permissions": "^5.4.1"
   }
 }
